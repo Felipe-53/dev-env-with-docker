@@ -1,0 +1,60 @@
+services:
+  db:
+    image: postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: database
+    volumes:
+      - db_data:/var/lib/postgresql/data
+
+  api:
+    depends_on:
+      - db
+    build:
+      context: ../backend
+      dockerfile: dev.Dockerfile
+    image: dev-api
+    env_file:
+      - ../backend/.env
+    volumes:
+      - type: bind
+        source: ../backend/src
+        target: /app/src
+    ports:
+      - 3500:3500
+      - 5555:5555 # enable prisma studio access
+
+  frontend:
+    depends_on:
+      - api
+    build:
+      context: ../frontend
+      dockerfile: dev.Dockerfile
+    image: dev-frontend
+    volumes:
+      - type: bind
+        source: ../frontend/src
+        target: /app/src
+      - type: bind
+        source: ../frontend/public
+        target: /app/public
+      - type: bind
+        source: ../frontend/styles
+        target: /app/styles
+  
+  proxy:
+    depends_on:
+      - api
+      - frontend
+    build:
+      context: ./
+      dockerfile: proxy.Dockerfile
+    image: dev-proxy
+    ports:
+      - 5000:5000
+    logging:
+      driver: none
+
+volumes:
+  db_data:
